@@ -7,7 +7,11 @@ Sizebox's own first person puts the camera at a fixed height and hides your whol
 - sits at your real eye level, for micros and giantesses
 - keeps your body visible and only hides the head
 - smooths out walking bob and keeps the horizon level
-- uses Sizebox's own controls, so moving and aiming work the same
+- your body faces where you look, A/D strafe instead of spinning you around
+- a bit of head bob when you walk and run
+- the size gun stays in your hand and the arm aims at the crosshair
+- crawling doesn't throw the camera around anymore
+- uses Sizebox's own controls
 
 ## Install
 

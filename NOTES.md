@@ -45,3 +45,11 @@ dotnet build -c Release
 ```
 
 The DLL is copied to `BepInEx/plugins/Sizebox_PerspectiveX` automatically. The game's `BepInEx.cfg` needs `HideManagerGameObject = true`, which is already set by the SizeboxTweaks install.
+
+## 1.1.0
+
+- **Body faces the view.** Sizebox's first person snaps the micro to the walk direction with `Rigidbody.MoveRotation` every physics step, so A/D turned the body 90 degrees at once and the eye point (in front of the neck) slid sideways. A postfix on `NewPlayerMicroController.MovementManagement` turns the body to the camera's yaw instead. The game also slows movement by the angle between the walk direction and the body (meant for turning); that factor is worked back out of the step's velocity (the step is `Lerp(previous, target * factor, k)`), leaving 75% speed for walking backwards. Off while crawling, flying or aiming. Measured: body vs. view 90 degrees while strafing before, 0 after.
+- **Size gun.** In first person Sizebox parents the gun to the camera as a floating view model. With `GunInHand` the gun stays in the right hand (`ResetRaygunPosition` instead of `SetRaygunFirstPersonPosition`), the body faces the view, and the game's AimIK aims the arm at a point `GunHoldDown`/`GunHoldRight` degrees off the crosshair, so the gun sits low right. For the moment a projectile or laser is fired the gun is turned to the real crosshair target and back, so shots still land on the crosshair.
+- **Crawl** (Sizebox's crouch key is the crawl/climb state): no head sway and stronger position smoothing while crawling.
+- **View bob**: a small procedural bob timed by distance walked (two dips per 1.5 m stride, a little side sway), faded in with speed. `PositionSmoothing` default 0.65 to 0.45 so the view follows the body more closely; configs still on 0.65 are moved over once.
+- Dev self test `Motion` walks, strafes, crawls and aims, and logs camera jumps and body vs. view angles per phase.

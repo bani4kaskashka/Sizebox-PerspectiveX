@@ -23,6 +23,18 @@ namespace SizeboxPerspectiveX
         private bool _swayInit;
         private Camera _cam;
         private int _playerLayerBit;
+        private NewPlayerMicroController _mover;
+        private float _bobPhase;
+        private float _bobAmount;
+        private Vector3 _lastBodyPos;
+
+        // For the movement/gun patches: is the PerspectiveX view on, and on whom
+        internal static bool InFirstPerson;
+        internal static Humanoid Entity;
+        // The view of the last frame (the camera itself is put back on the rig between frames)
+        internal static bool HasView;
+        internal static Vector3 ViewPosition;
+        internal static Quaternion ViewRotation;
 
         private void Start()
         {
@@ -44,6 +56,8 @@ namespace SizeboxPerspectiveX
 
             if (entity != _entity || (entity == null && _active))
                 Exit();
+            InFirstPerson = entity != null;
+            Entity = entity;
             if (entity == null)
                 return;
 
@@ -73,7 +87,12 @@ namespace SizeboxPerspectiveX
             Vector3 fwd = gameRot * Vector3.forward;
             Quaternion look = Mathf.Abs(fwd.y) > 0.999f ? gameRot : Quaternion.LookRotation(fwd, Vector3.up);
 
-            float sway = PerspectiveXPlugin.HeadSway.Value;
+            // Crawling (Sizebox's crouch) swings the head through big angles every step; the view
+            // follows the mouse only, and the position is smoothed harder.
+            if (_mover == null)
+                _mover = Object.FindObjectOfType<NewPlayerMicroController>();
+            bool crawling = _mover != null && _mover.isActiveAndEnabled && _mover.IsClimbing;
+            float sway = crawling ? 0f : PerspectiveXPlugin.HeadSway.Value;
             if (sway > 0f)
             {
                 Vector3 headFwd = head.forward;
@@ -101,6 +120,8 @@ namespace SizeboxPerspectiveX
             Vector3 target = eyes + flatFwd * (PerspectiveXPlugin.ForwardOffset.Value * cm) + Vector3.up * (PerspectiveXPlugin.UpOffset.Value * cm);
 
             float smoothing = PerspectiveXPlugin.PositionSmoothing.Value;
+            if (crawling)
+                smoothing = Mathf.Max(smoothing, 0.8f);
             if (!_smoothInit || smoothing <= 0f || (target - _smoothPos).sqrMagnitude > (100f * cm) * (100f * cm))
             {
                 _smoothPos = target; // first frame, or teleported/resized: snap
@@ -112,7 +133,10 @@ namespace SizeboxPerspectiveX
                 _smoothPos = Vector3.Lerp(_smoothPos, target, 1f - Mathf.Exp(-followSpeed * Time.deltaTime));
             }
 
-            _cam.transform.SetPositionAndRotation(_smoothPos, look);
+            _cam.transform.SetPositionAndRotation(_smoothPos + Bob(h, look, cm, crawling), look);
+            ViewPosition = _cam.transform.position;
+            ViewRotation = look;
+            HasView = true;
             Posed = _cam.transform;
             _cam.nearClipPlane = PerspectiveXPlugin.NearClip.Value * cm;
             if (PerspectiveXPlugin.Fov.Value > 1f)
@@ -138,6 +162,31 @@ namespace SizeboxPerspectiveX
             }
         }
 
+        // A little head bob while moving, timed by the distance walked (two dips per stride, a
+        // small sway from foot to foot), fading in and out with speed. The horizon stays level.
+        private Vector3 Bob(Humanoid h, Quaternion look, float cm, bool crawling)
+        {
+            float amount = PerspectiveXPlugin.ViewBob.Value;
+            Vector3 p = h.transform.position;
+            Vector3 step = (p - _lastBodyPos).Flatten();
+            _lastBodyPos = p;
+            if (amount <= 0f || Time.deltaTime <= 0f || step.magnitude > 50f * cm)
+                return Vector3.zero;
+            float metres = step.magnitude / (cm * 100f); // human metres this frame
+            float speed = metres / Time.deltaTime;
+            // 0 standing, 1 at a jog (about 4 m/s)
+            float target = crawling ? 0f : Mathf.Clamp01(speed / 4f);
+            _bobAmount = Mathf.Lerp(_bobAmount, target, 1f - Mathf.Exp(-6f * Time.deltaTime));
+            // one full cycle per stride of about 1.5 m
+            _bobPhase += metres / 1.5f * Mathf.PI * 2f;
+            float a = amount * _bobAmount * cm;
+            float up = Mathf.Sin(_bobPhase * 2f) * 1.6f * a;
+            float side = Mathf.Sin(_bobPhase) * 1.0f * a;
+            Vector3 right = look * Vector3.right;
+            right.y = 0f;
+            return Vector3.up * up + right.normalized * side;
+        }
+
         private static Vector3 EyeMidpoint(Animator anim, Transform head, Transform body, float cm)
         {
             Transform l = anim.GetBoneTransform(HumanBodyBones.LeftEye);
@@ -161,6 +210,11 @@ namespace SizeboxPerspectiveX
             }
             _active = false;
             _entity = null;
+            InFirstPerson = false;
+            Entity = null;
+            _mover = null;
+            HasView = false;
+            FpGun.HasTarget = false;
             _smoothInit = false;
             _swayInit = false;
         }
