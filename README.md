@@ -9,8 +9,6 @@ Sizebox's own first person puts the camera at a fixed height and hides your whol
 - smooths out walking bob and keeps the horizon level
 - uses Sizebox's own controls, so moving and aiming work the same
 
-![Sizebox first person vs PerspectiveX](screenshots/pov_compare.png)
-
 ## Install
 
 1. Get [BepInEx 5 x64](https://github.com/BepInEx/BepInEx/releases) and unzip it into the Sizebox folder (next to `Sizebox.exe`).
