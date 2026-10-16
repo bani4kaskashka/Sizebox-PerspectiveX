@@ -117,8 +117,8 @@ namespace SizeboxPerspectiveX
                 : eye + fwd * (100f * scale);
             FpGun.HasTarget = true;
 
-            Quaternion hip = look * Quaternion.Euler(PerspectiveXPlugin.GunDown.Value, PerspectiveXPlugin.GunRight.Value, 0f);
-            __instance.aimPoint.position = eye + hip * Vector3.forward * (3f * scale);
+            // The arm itself is placed by PovDriver after animation; aim IK just aims the body
+            __instance.aimPoint.position = FpGun.Target;
             var ik = Ik(__instance)?.GetAimIk();
             if (ik != null)
                 ik.solver.target = __instance.aimPoint;
@@ -161,6 +161,46 @@ namespace SizeboxPerspectiveX
     {
         internal static Vector3 Target;
         internal static bool HasTarget;
+
+        // After animation and aim IK: put the gun at a fixed spot in view, pointing at the
+        // crosshair, and bend the right arm (two-bone IK, elbow down and out) so the hand holds it.
+        internal static void Place(Humanoid h, PlayerRaygun gun, Vector3 eye, Quaternion look, float cm)
+        {
+            Animator anim = h.Animator;
+            Transform upper = anim.GetBoneTransform(HumanBodyBones.RightUpperArm);
+            Transform lower = anim.GetBoneTransform(HumanBodyBones.RightLowerArm);
+            Transform hand = anim.GetBoneTransform(HumanBodyBones.RightHand);
+            Vector3 o = PerspectiveXPlugin.GunOffset.Value;
+            Vector3 grip = eye + look * new Vector3(o.x, o.y, o.z) * cm;
+            if (upper != null && lower != null && hand != null)
+            {
+                Vector3 hint = upper.position + look * new Vector3(40f, -60f, -10f) * cm;
+                TwoBone(upper, lower, hand, grip, hint);
+            }
+            Transform g = gun.transform;
+            Vector3 aim = HasTarget ? Target - grip : look * Vector3.forward;
+            g.SetPositionAndRotation(grip, Quaternion.LookRotation(aim.sqrMagnitude > 1e-8f ? aim : look * Vector3.forward, look * Vector3.up));
+        }
+
+        private static void TwoBone(Transform a, Transform b, Transform c, Vector3 target, Vector3 hint)
+        {
+            float lenA = Vector3.Distance(a.position, b.position);
+            float lenB = Vector3.Distance(b.position, c.position);
+            if (lenA < 1e-6f || lenB < 1e-6f)
+                return;
+            Vector3 toT = target - a.position;
+            float dist = Mathf.Clamp(toT.magnitude, Mathf.Abs(lenA - lenB) + 1e-4f, lenA + lenB - 1e-4f);
+            Vector3 dir = toT.normalized;
+            // elbow: in the plane of shoulder, target and hint, at the angle the arm lengths allow
+            float cosA = Mathf.Clamp((lenA * lenA + dist * dist - lenB * lenB) / (2f * lenA * dist), -1f, 1f);
+            Vector3 bend = Vector3.ProjectOnPlane(hint - a.position, dir);
+            if (bend.sqrMagnitude < 1e-8f)
+                bend = Vector3.ProjectOnPlane(Vector3.down, dir);
+            bend.Normalize();
+            Vector3 elbow = a.position + dir * (cosA * lenA) + bend * (Mathf.Sqrt(1f - cosA * cosA) * lenA);
+            a.rotation = Quaternion.FromToRotation(b.position - a.position, elbow - a.position) * a.rotation;
+            b.rotation = Quaternion.FromToRotation(c.position - b.position, target - b.position) * b.rotation;
+        }
 
         internal static bool Active(BaseCameraController ctrl) =>
             PerspectiveXPlugin.Enabled.Value && PerspectiveXPlugin.GunInHand.Value

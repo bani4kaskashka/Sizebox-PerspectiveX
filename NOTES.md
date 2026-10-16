@@ -53,3 +53,7 @@ The DLL is copied to `BepInEx/plugins/Sizebox_PerspectiveX` automatically. The g
 - **Crawl** (Sizebox's crouch key is the crawl/climb state): no head sway and stronger position smoothing while crawling.
 - **View bob**: a small procedural bob timed by distance walked (two dips per 1.5 m stride, a little side sway), faded in with speed. `PositionSmoothing` default 0.65 to 0.45 so the view follows the body more closely; configs still on 0.65 are moved over once.
 - Dev self test `Motion` walks, strafes, crawls and aims, and logs camera jumps and body vs. view angles per phase.
+
+## 1.1.1
+
+- **Gun placement.** The aiming animation held the gun at chest height, at the bottom edge of the view, and the aim IK didn't move it. After animation the gun is now put at `GunPositionCm` from the eyes (right, up, forward; default 16, -14, 38), pointing at the crosshair, and a two-bone IK bends the right arm (elbow down and out) so the hand holds it.

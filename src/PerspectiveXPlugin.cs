@@ -20,7 +20,7 @@ namespace SizeboxPerspectiveX
     {
         public const string Guid = "sizebox.perspectivex";
         public const string Name = "Sizebox PerspectiveX";
-        public const string Version = "1.1.0";
+        public const string Version = "1.1.1";
 
         internal static ManualLogSource Log;
 
@@ -36,8 +36,7 @@ namespace SizeboxPerspectiveX
         internal static ConfigEntry<bool> BodyFollowsView;
         internal static ConfigEntry<bool> GunInHand;
         internal static ConfigEntry<float> ViewBob;
-        internal static ConfigEntry<float> GunDown;
-        internal static ConfigEntry<float> GunRight;
+        internal static ConfigEntry<Vector3> GunOffset;
         internal static ConfigEntry<DevTest> Test;
 
         public enum DevTest { Off, Micro, Giantess, Motion }
@@ -68,10 +67,9 @@ namespace SizeboxPerspectiveX
                 "Off = the game's way: the body snaps to the walking direction.");
             GunInHand = Config.Bind("General", "GunInHand", true,
                 "In first person the size gun stays in your hand and the arm aims at the crosshair. Off = the game's floating first-person gun.");
-            GunDown = Config.Bind("Comfort", "GunHoldDown", 10f,
-                new ConfigDescription("First-person size gun: how far below the crosshair the arm holds it, in degrees. Shots still go to the crosshair.", new AcceptableValueRange<float>(0f, 40f)));
-            GunRight = Config.Bind("Comfort", "GunHoldRight", 20f,
-                new ConfigDescription("First-person size gun: how far right of the crosshair the arm holds it, in degrees.", new AcceptableValueRange<float>(-40f, 40f)));
+            GunOffset = Config.Bind("Comfort", "GunPositionCm", new Vector3(16f, -14f, 38f),
+                "First-person size gun: where your hand holds it, in cm from your eyes at human scale (right, up, forward). " +
+                "The arm bends to hold it there and the gun points at the crosshair.");
             ViewBob = Config.Bind("Comfort", "ViewBob", 0.6f,
                 new ConfigDescription("Head bob while walking and running. 0 = off.", new AcceptableValueRange<float>(0f, 1.5f)));
             // 1.1.0 follows the body more closely (the old default lagged behind while running)

@@ -137,6 +137,12 @@ namespace SizeboxPerspectiveX
             ViewPosition = _cam.transform.position;
             ViewRotation = look;
             HasView = true;
+            if (_mover != null && _mover.IsAiming && FpGun.Active(null) && !_mover.IsFlying)
+            {
+                PlayerRaygun gun = _mover.GetRaygun();
+                if (gun != null && gun.gameObject.activeInHierarchy)
+                    FpGun.Place(h, gun, ViewPosition, look, cm);
+            }
             Posed = _cam.transform;
             _cam.nearClipPlane = PerspectiveXPlugin.NearClip.Value * cm;
             if (PerspectiveXPlugin.Fov.Value > 1f)
